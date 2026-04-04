@@ -474,7 +474,7 @@ function save(){
     }catch(e){
       awOK=false;
       showBadge('💾 محفوظ محلياً','warn');
-      setStatus(false,'⚠️ خطأ في الحفظ — سيتم إعادة المحاولة');
+      setStatus(false,'❌ خطأ حفظ: '+e.message+' ('+e.code+')');
       var ri=setInterval(async function(){
         try{await awSet(ST);awOK=true;showBadge('✅ أُعيد الاتصال','ok');setStatus(true,'✅ أُعيد الاتصال بـ Appwrite');clearInterval(ri);}catch(e2){}
       },30000);
