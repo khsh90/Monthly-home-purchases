@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>قائمة تسوق البيت</title>
-<script src="https://cdn.jsdelivr.net/npm/appwrite@16.0.0/dist/iife/sdk.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/appwrite@16.0.0/dist/iife/sdk.js"></script>
 <style>
@@ -224,48 +223,41 @@ h1{font-size:18px;font-weight:800;color:#fff;line-height:1.1}
 <script>
 (function(){
 
-/* ════ APPWRITE CONFIG ════ */
-var client = new Appwrite.Client()
-  .setEndpoint('https://fra.cloud.appwrite.io/v1')
-  .setProject('fra-69d0701b00051cd5cfa2');
+/* ════ APPWRITE CONFIG — Public REST (no auth) ════ */
+var AW_ENDPOINT = 'https://fra.cloud.appwrite.io/v1';
+var AW_PROJECT  = 'fra-69d0701b00051cd5cfa2';
+var DB_ID       = 'database-69d071e20030f19397c9';
+var COL_ID      = 'home_purchases_collection';
+var DOC_ID      = 'main_state';
+var DOC_URL     = AW_ENDPOINT+'/databases/'+DB_ID+'/collections/'+COL_ID+'/documents/'+DOC_ID;
+var COL_URL     = AW_ENDPOINT+'/databases/'+DB_ID+'/collections/'+COL_ID+'/documents';
 
-var account   = new Appwrite.Account(client);
-var databases = new Appwrite.Databases(client);
-var DB_ID  = 'database-69d071e20030f19397c9';
-var COL_ID = 'home_purchases_collection';
-var DOC_ID = 'main_state';
-
-async function ensureSession(){
-  try{
-    await account.get();
-  }catch(e){
-    /* no session — create anonymous one */
-    await account.createAnonymousSession();
-  }
+function awHeaders(){
+  return {
+    'Content-Type':'application/json',
+    'X-Appwrite-Project': AW_PROJECT
+  };
 }
 
 async function awGet(){
-  await ensureSession();
-  try{
-    var doc = await databases.getDocument(DB_ID, COL_ID, DOC_ID);
-    return doc.data ? JSON.parse(doc.data) : null;
-  }catch(e){
-    if(e.code===404) return null;
-    throw e;
-  }
+  var r = await fetch(DOC_URL,{method:'GET',headers:awHeaders()});
+  if(r.status===404)return null;
+  if(!r.ok){var e=await r.json();throw {message:e.message,code:r.status};}
+  var j=await r.json();
+  return j.data?JSON.parse(j.data):null;
 }
 
 async function awSet(data){
-  await ensureSession();
-  var payload = {data: JSON.stringify(data)};
-  try{
-    await databases.updateDocument(DB_ID, COL_ID, DOC_ID, payload);
-  }catch(e){
-    if(e.code===404){
-      await databases.createDocument(DB_ID, COL_ID, DOC_ID, payload);
-    } else throw e;
+  var body=JSON.stringify({data:JSON.stringify(data)});
+  var r=await fetch(DOC_URL,{method:'PATCH',headers:awHeaders(),body:body});
+  if(r.status===404){
+    r=await fetch(COL_URL,{method:'POST',headers:awHeaders(),
+      body:JSON.stringify({documentId:DOC_ID,data:JSON.stringify(data)})});
   }
+  if(!r.ok){var e=await r.json();throw {message:e.message,code:r.status};}
 }
+
+function ensureSession(){return Promise.resolve();}
 
 /* ════ SECTIONS ════ */
 var SECS=[
