@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>قائمة تسوق البيت</title>
+<script src="https://cdn.jsdelivr.net/npm/appwrite@16.0.0/dist/iife/sdk.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/appwrite@16.0.0/dist/iife/sdk.js"></script>
 <style>
@@ -228,27 +229,40 @@ var client = new Appwrite.Client()
   .setEndpoint('https://fra.cloud.appwrite.io/v1')
   .setProject('fra-69d0701b00051cd5cfa2');
 
+var account   = new Appwrite.Account(client);
 var databases = new Appwrite.Databases(client);
 var DB_ID  = 'database-69d071e20030f19397c9';
 var COL_ID = 'home_purchases_collection';
 var DOC_ID = 'main_state';
 
+async function ensureSession(){
+  try{
+    await account.get();
+  }catch(e){
+    /* no session — create anonymous one */
+    await account.createAnonymousSession();
+  }
+}
+
 async function awGet(){
+  await ensureSession();
   try{
     var doc = await databases.getDocument(DB_ID, COL_ID, DOC_ID);
     return doc.data ? JSON.parse(doc.data) : null;
   }catch(e){
-    if(e.code===404)return null;
+    if(e.code===404) return null;
     throw e;
   }
 }
+
 async function awSet(data){
-  var payload={data:JSON.stringify(data)};
+  await ensureSession();
+  var payload = {data: JSON.stringify(data)};
   try{
-    await databases.updateDocument(DB_ID,COL_ID,DOC_ID,payload);
+    await databases.updateDocument(DB_ID, COL_ID, DOC_ID, payload);
   }catch(e){
     if(e.code===404){
-      await databases.createDocument(DB_ID,COL_ID,DOC_ID,payload);
+      await databases.createDocument(DB_ID, COL_ID, DOC_ID, payload);
     } else throw e;
   }
 }
