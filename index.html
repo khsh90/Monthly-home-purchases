@@ -248,7 +248,7 @@ async function awSet(data){
     await databases.updateDocument(DB_ID,COL_ID,DOC_ID,payload);
   }catch(e){
     if(e.code===404){
-      await databases.createDocument(DB_ID,COL_ID,DOC_ID,payload,['read("any")','create("any")','update("any")']);
+      await databases.createDocument(DB_ID,COL_ID,DOC_ID,payload);
     } else throw e;
   }
 }
