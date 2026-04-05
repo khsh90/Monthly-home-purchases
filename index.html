@@ -230,7 +230,7 @@ var COL_ID      = 'home_purchases_collection';
 var DOC_ID      = 'main_state';
 
 var client = new Appwrite.Client();
-client.setEndpoint(AW_ENDPOINT).setProject(AW_PROJECT);
+client.setEndpoint(AW_ENDPOINT).setProject(AW_PROJECT).setKey('standard_38c23c338b049b60e8d9e5947fe5a8c7672e3c23b83e4b5a3f8a928ac57cab227104bc32add5663d930f24b1d01555b06243c79122aa747851a8a98efc1955f1cbe18decd69ea6d545d68db0f6ebeaaecf33c7999e7b0c0d2356fede122b789da949ade4b7bfa124acf9e18d22cef647abcb61511632124c3afc0dc93b8adab6');
 var databases = new Appwrite.Databases(client);
 
 async function awGet() {
