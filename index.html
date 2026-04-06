@@ -236,7 +236,7 @@ var databases = new Appwrite.Databases(client);
 async function awGet() {
   try {
     var doc = await databases.getDocument(DB_ID, COL_ID, DOC_ID);
-    return doc.data ? JSON.parse(doc.data) : null;
+    return doc.data || null;
   } catch(e) {
     if (e.code === 404) return null;
     throw { message: e.message, code: e.code };
@@ -244,13 +244,12 @@ async function awGet() {
 }
 
 async function awSet(data) {
-  var body = { data: JSON.stringify(data) };
   try {
-    await databases.updateDocument(DB_ID, COL_ID, DOC_ID, body);
+    await databases.updateDocument(DB_ID, COL_ID, DOC_ID, data);
   } catch(e) {
     if (e.code === 404) {
       await databases.createDocument(
-        DB_ID, COL_ID, DOC_ID, body,
+        DB_ID, COL_ID, DOC_ID, data,
         [
           Appwrite.Permission.read(Appwrite.Role.any()),
           Appwrite.Permission.update(Appwrite.Role.any()),
