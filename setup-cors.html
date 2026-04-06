@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Appwrite CORS Setup Helper</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #F02E65; }
+        .step {
+            background: #f9f9f9;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #F02E65;
+        }
+        button {
+            background: #F02E65;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover { background: #d02555; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        #result { margin-top: 20px; padding: 15px; border-radius: 5px; }
+        input { padding: 8px; width: 100%; margin: 5px 0; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@16.0.0/dist/iife/sdk.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Appwrite CORS Setup Helper</h1>
+
+        <div class="step">
+            <h3>Step 1: Verify Connection</h3>
+            <button onclick="testConnection()">Test Connection</button>
+            <div id="connectionResult"></div>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Manual CORS Setup Required</h3>
+            <p><strong>IMPORTANT:</strong> Platform configuration must be done through the Appwrite Console.</p>
+            <ol>
+                <li>Go to: <a href="https://fra.cloud.appwrite.io/console/project-fra-69d0701b00051cd5cfa2/settings" target="_blank">Project Settings</a></li>
+                <li>Scroll to <strong>Platforms</strong> section</li>
+                <li>Click <strong>Add Platform</strong> → <strong>Web App</strong></li>
+                <li>Add these hostnames:
+                    <ul>
+                        <li><code>branch-master-2e512ff.appwrite.network</code></li>
+                        <li><code>localhost</code></li>
+                        <li><code>*</code> (for development)</li>
+                    </ul>
+                </li>
+                <li>Click <strong>Create</strong></li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <h3>Step 3: Setup Collection Attribute</h3>
+            <button onclick="checkCollection()">Check Collection</button>
+            <button onclick="createAttribute()">Create 'data' Attribute</button>
+            <div id="collectionResult"></div>
+        </div>
+
+        <div class="step">
+            <h3>Step 4: Test Data Save/Load</h3>
+            <button onclick="testSaveLoad()">Test Save & Load</button>
+            <div id="testResult"></div>
+        </div>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const client = new Appwrite.Client()
+            .setEndpoint('https://fra.cloud.appwrite.io/v1')
+            .setProject('fra-69d0701b00051cd5cfa2')
+            .setKey('standard_38c23c338b049b60e8d9e5947fe5a8c7672e3c23b83e4b5a3f8a928ac57cab227104bc32add5663d930f24b1d01555b06243c79122aa747851a8a98efc1955f1cbe18decd69ea6d545d68db0f6ebeaaecf33c7999e7b0c0d2356fede122b789da949ade4b7bfa124acf9e18d22cef647abcb61511632124c3afc0dc93b8adab6');
+
+        const databases = new Appwrite.Databases(client);
+        const DB_ID = '69d071e20030f19397c9';
+        const COL_ID = 'home_purchases_collection';
+        const DOC_ID = 'main_state';
+
+        async function testConnection() {
+            const result = document.getElementById('connectionResult');
+            result.innerHTML = 'Testing...';
+            try {
+                await databases.listDocuments(DB_ID, COL_ID);
+                result.innerHTML = '<span class="success">✅ Connection successful!</span>';
+            } catch (e) {
+                result.innerHTML = `<span class="error">❌ Error: ${e.message}</span>`;
+            }
+        }
+
+        async function checkCollection() {
+            const result = document.getElementById('collectionResult');
+            result.innerHTML = 'Checking...';
+            try {
+                const collection = await databases.listAttributes(DB_ID, COL_ID);
+                const hasData = collection.attributes.some(attr => attr.key === 'data');
+                if (hasData) {
+                    result.innerHTML = '<span class="success">✅ Collection has "data" attribute!</span>';
+                } else {
+                    result.innerHTML = '<span class="error">❌ "data" attribute not found. Click "Create" button.</span>';
+                }
+                console.log('Attributes:', collection);
+            } catch (e) {
+                result.innerHTML = `<span class="error">❌ Error: ${e.message}</span>`;
+            }
+        }
+
+        async function createAttribute() {
+            const result = document.getElementById('collectionResult');
+            result.innerHTML = 'Creating attribute...';
+            try {
+                await databases.createStringAttribute(
+                    DB_ID,
+                    COL_ID,
+                    'data',
+                    1000000, // 1MB max size
+                    false    // not required
+                );
+                result.innerHTML = '<span class="success">✅ Attribute "data" created! Wait 10 seconds for it to be ready, then test.</span>';
+            } catch (e) {
+                if (e.message.includes('already exists')) {
+                    result.innerHTML = '<span class="success">✅ Attribute already exists!</span>';
+                } else {
+                    result.innerHTML = `<span class="error">❌ Error: ${e.message}</span>`;
+                }
+            }
+        }
+
+        async function testSaveLoad() {
+            const result = document.getElementById('testResult');
+            result.innerHTML = 'Testing...';
+
+            const testData = {
+                prices: { test_item: 5.99 },
+                sel: { test_item: true },
+                custom: []
+            };
+
+            try {
+                // Try to save
+                result.innerHTML = 'Saving test data...';
+                try {
+                    await databases.updateDocument(
+                        DB_ID, COL_ID, DOC_ID,
+                        { data: JSON.stringify(testData) }
+                    );
+                } catch (e) {
+                    if (e.code === 404) {
+                        // Document doesn't exist, create it
+                        await databases.createDocument(
+                            DB_ID, COL_ID, DOC_ID,
+                            { data: JSON.stringify(testData) },
+                            [
+                                Appwrite.Permission.read(Appwrite.Role.any()),
+                                Appwrite.Permission.update(Appwrite.Role.any()),
+                                Appwrite.Permission.delete(Appwrite.Role.any())
+                            ]
+                        );
+                    } else {
+                        throw e;
+                    }
+                }
+
+                result.innerHTML += '<br>Loading test data...';
+                const doc = await databases.getDocument(DB_ID, COL_ID, DOC_ID);
+                const loadedData = JSON.parse(doc.data);
+
+                if (loadedData.prices.test_item === 5.99) {
+                    result.innerHTML = '<span class="success">✅ Save & Load working perfectly!</span>';
+                } else {
+                    result.innerHTML = '<span class="error">❌ Data mismatch!</span>';
+                }
+            } catch (e) {
+                result.innerHTML = `<span class="error">❌ Error: ${e.message}<br>Code: ${e.code}</span>`;
+            }
+        }
+    </script>
+</body>
+</html>
