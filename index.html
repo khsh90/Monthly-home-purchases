@@ -162,15 +162,6 @@ h1{font-size:18px;font-weight:800;color:#fff;line-height:1.1}
   </div>
   <select class="sec-filter" id="secFilter">
     <option value="">القسم</option>
-    <option value="dairy">🥛 ألبان</option>
-    <option value="veg">🥦 خضار</option>
-    <option value="meat">🍗 لحوم</option>
-    <option value="pantry">🛒 مطبخ</option>
-    <option value="clean">🧹 نظافة</option>
-    <option value="baby">👶 طفلة</option>
-    <option value="personal">🧴 عناية</option>
-    <option value="snacks">🍫 وجبات</option>
-    <option value="custom">➕ إضافات</option>
   </select>
   <button class="icon-btn" id="reorderBtn">⇅</button>
   <button class="addbtn" id="addBtn">＋ إضافة</button>
@@ -185,7 +176,7 @@ h1{font-size:18px;font-weight:800;color:#fff;line-height:1.1}
   <div class="fld"><label>اسم المادة *</label><input type="text" id="mname" placeholder="مثال: حليب أو بسكويت"></div>
   <div class="frow2">
     <div class="fld"><label>الفئة</label><select id="mtag"><option value="p">أساسي</option><option value="s">ثانوي</option><option value="m">مضاف</option></select></div>
-    <div class="fld"><label>القسم</label><select id="msec"><option value="dairy">🥛 ألبان</option><option value="veg">🥦 خضار</option><option value="meat">🍗 لحوم</option><option value="pantry">🛒 مطبخ</option><option value="clean">🧹 نظافة</option><option value="baby">👶 طفلة</option><option value="personal">🧴 عناية</option><option value="snacks">🍫 وجبات</option><option value="custom">➕ إضافات</option></select></div>
+    <div class="fld"><label>القسم</label><select id="msec"></select></div>
   </div>
   <div class="frow3">
     <div class="fld"><label>الوحدة</label><input type="text" id="mqty" placeholder="1 كغ"></div>
@@ -202,7 +193,7 @@ h1{font-size:18px;font-weight:800;color:#fff;line-height:1.1}
   <div class="fld"><label>اسم المادة</label><input type="text" id="ename"></div>
   <div class="frow2">
     <div class="fld"><label>الفئة</label><select id="etag"><option value="p">أساسي</option><option value="s">ثانوي</option><option value="m">مضاف</option></select></div>
-    <div class="fld"><label>القسم</label><select id="esec"><option value="dairy">🥛 ألبان</option><option value="veg">🥦 خضار</option><option value="meat">🍗 لحوم</option><option value="pantry">🛒 مطبخ</option><option value="clean">🧹 نظافة</option><option value="baby">👶 طفلة</option><option value="personal">🧴 عناية</option><option value="snacks">🍫 وجبات</option><option value="custom">➕ إضافات</option></select></div>
+    <div class="fld"><label>القسم</label><select id="esec"></select></div>
   </div>
   <div class="frow2">
     <div class="fld"><label>الوحدة</label><input type="text" id="eqty"></div>
@@ -266,128 +257,56 @@ async function awSet(data){
   }
 }
 
-function ensureSession(){
-  return account.get().catch(function(){
-    return account.createAnonymousSession();
-  });
+/* ════ LOAD SECTIONS FROM APPWRITE ════ */
+async function loadSectionsFromAppwrite(){
+  try{
+    var response = await databases.listDocuments(DB_ID, 'sections');
+    var sections = [];
+    response.documents.forEach(function(doc){
+      sections.push({
+        id: doc.$id,
+        ic: doc.icon || '📦',
+        tt: doc.title || 'قسم',
+        bg: doc.bgColor || '#F5F5F5',
+        order: doc.order || 999,
+        items: []
+      });
+    });
+    // Sort by order field
+    sections.sort(function(a,b){ return a.order - b.order; });
+    return sections;
+  }catch(e){
+    console.error('Error loading sections:', e);
+    return [];
+  }
+}
+
+/* ════ LOAD SHOPPING ITEMS FROM APPWRITE ════ */
+async function loadItemsFromAppwrite(){
+  try{
+    var response = await databases.listDocuments(DB_ID, 'shopping_items', [
+      Appwrite.Query.limit(500) // Load all items (max 500)
+    ]);
+    var items = [];
+    response.documents.forEach(function(doc){
+      items.push({
+        _id: doc.$id,
+        n: doc.name || '',
+        q: doc.qty || '—',
+        t: doc.tag || 'p',
+        pr: parseFloat(doc.price) || 0,
+        secId: doc.sectionId || 'custom'
+      });
+    });
+    return items;
+  }catch(e){
+    console.error('Error loading items:', e);
+    return [];
+  }
 }
 
 /* ════ SECTIONS ════ */
-var SECS=[
- {id:'dairy',ic:'🥛',tt:'ألبان ومشتقات',bg:'#E3F2FD',items:[
-  {n:'حليب السعودية 800 غرام',q:'حبة',t:'p',pr:3.99},
-  {n:'لبنة بلدنا 450 غرام',q:'حبة',t:'p',pr:1.75},
-  {n:'لبنة جرشية الكيلو ب 4',q:'كيلو',t:'p',pr:1.00},
-  {n:'جبنة ساندويشات من حبوب الكيلو 7.5',q:'كيلو',t:'p',pr:3.50},
-  {n:'قشطة خمس بقرات 125 مل',q:'حبة',t:'p',pr:0.37},
-  {n:'قشطة kdd 250 ml',q:'حبة',t:'p',pr:0.59},
-  {n:'قشطة افكو 125 مل',q:'حبة',t:'p',pr:0.35},
-  {n:'زبدة لورباك 100 غرام',q:'حبة',t:'s',pr:1.00},
-  {n:'زبدة المراعي 100 غرام',q:'حبة',t:'s',pr:0.90},
-  {n:'جبنة مثلثات المراعي',q:'2 علبة',t:'s',pr:0.70},
-  {n:'جبنة مثلثات تانو',q:'حبة',t:'s',pr:0.50},
-  {n:'جبنة صفراء حمودة 450 غرام',q:'حبة',t:'s',pr:2.50},
-  {n:'جبنة سائلة لاكريما صغيرة',q:'1 علبة',t:'s',pr:1.19},
-  {n:'جبنة سائلة لاكريما عرض',q:'حبة',t:'s',pr:4.99},
-  {n:'جبنة شرائح المراعي',q:'حبة',t:'s',pr:1.27},
-  {n:'جبنة فيتا كبير',q:'حبة',t:'s',pr:0.75},
-  {n:'جبنة فيتا صغير',q:'حبة',t:'s',pr:0.33},
-  {n:'جبنة كيري',q:'حبة',t:'s',pr:0.90},
-  {n:'لبن سائل المراعي 2 لتر',q:'لتر',t:'s',pr:2.25}
- ]},
- {id:'veg',ic:'🥦',tt:'خضار وفاكهة',bg:'#E8F5E9',items:[
-  {n:'بندورة (طماطم)',q:'كيلو',t:'p',pr:0.89},{n:'خيار',q:'كيلو',t:'p',pr:0.69},
-  {n:'جزر',q:'كيلو',t:'p',pr:0.89},{n:'بصل',q:'كيلو',t:'p',pr:0.59},
-  {n:'بطاطا',q:'كيلو',t:'p',pr:0.69},{n:'تفاح',q:'كيلو',t:'p',pr:1.49},
-  {n:'موز',q:'كيلو',t:'p',pr:1.49},{n:'فليفلة صفراء / حمراء',q:'كيلو',t:'s',pr:0.99},
-  {n:'لوز اخضر',q:'كيلو',t:'s',pr:3.00}
- ]},
- {id:'meat',ic:'🍗',tt:'لحوم ودواجن',bg:'#FFEBEE',items:[
-  {n:'دجاج تمام',q:'كيلو',t:'p',pr:2.49},
-  {n:'لحمة مفرومة',q:'نص كيلو',t:'p',pr:6.00},
-  {n:'صدر سفاين دجاج',q:'كيلو',t:'p',pr:0},
-  {n:'برغر حبة لحمة نبيل 10 حبات',q:'حبة',t:'s',pr:1.45},
-  {n:'مرتديال سنيورة فستق حلبي الكيلو 4.5',q:'حسب الحاجة',t:'s',pr:2.00},
-  {n:'بطاطا قلي جاهزة fregys 2.5 kg',q:'حبة',t:'s',pr:2.49},
-  {n:'زنجر نبيل 750',q:'حبة',t:'s',pr:2.99},
-  {n:'تطلي توكاس 380 غرام تركي',q:'حبة',t:'s',pr:1.90},
-  {n:'تطلي الدرة 430 غرام',q:'حبة',t:'s',pr:0.99},
-  {n:'يونيوم دجاج كبير',q:'حبة',t:'s',pr:2.83},
-  {n:'يونيوم وسط',q:'حبة',t:'s',pr:1.56},
-  {n:'تونا ريو جاردنز',q:'حبة',t:'s',pr:0.70}
- ]},
- {id:'pantry',ic:'🛒',tt:'أساسيات المطبخ',bg:'#FFF8E1',items:[
-  {n:'بيض',q:'30 بيضة',t:'p',pr:3.10},{n:'ملح',q:'حبة',t:'p',pr:0.24},
-  {n:'طحين',q:'كيلو',t:'p',pr:0.58},{n:'طحينية ماركة سمسم 400 غرام',q:'علبة',t:'p',pr:1.41},
-  {n:'زعتر كبيتيلو ملوكي 500 غرام',q:'بكيت',t:'p',pr:1.65},
-  {n:'حمص الكسيح 125 مل 4 حبات',q:'حبة',t:'p',pr:1.39},
-  {n:'شاي ليبتون 100 ميدالية',q:'حبة',t:'p',pr:1.77},
-  {n:'ماجي 24 مكعب',q:'بكيت',t:'p',pr:1.95},{n:'ماجي vegeta',q:'كيس',t:'p',pr:1.55},
-  {n:'ماجي خلط البشاميل 1+3',q:'بكيت',t:'s',pr:2.59},{n:'ماجي شوربة 3+1',q:'بكيت',t:'s',pr:2.39},
-  {n:'مايونيز صغير',q:'حبة',t:'s',pr:1.50},{n:'كاتشاب حياة صغير',q:'حبة',t:'s',pr:0.55},
-  {n:'ارز صنوايت 10 كيلو',q:'حبة',t:'p',pr:10.25},{n:'ارز صنوايت 4 كيلو',q:'حبة',t:'p',pr:4.46},
-  {n:'رز مندي بسمتي 4 كيلو',q:'حبة',t:'p',pr:4.19},
-  {n:'ارز بشمتس ابو كاس 4 كيلو',q:'كيلو',t:'p',pr:4.48},
-  {n:'ارز مصطفى حبة متوسطة 3.5 كيلو',q:'كيلو',t:'p',pr:3.59},
-  {n:'ارز مصطفى متوسط الحبة 9 كيلو',q:'كيلو',t:'p',pr:8.90},
-  {n:'سكر الاسرة 10 كيلو',q:'حبة',t:'p',pr:4.99},{n:'سكر ردسي 5 كيلو',q:'كيلو',t:'p',pr:2.29},
-  {n:'عدس مجروش تركي الكنغر 700 غرام',q:'كيلو',t:'p',pr:0.75},
-  {n:'معكرونة سبغيتي وكل الاشكال',q:'حبة',t:'p',pr:0.45},
-  {n:'معكرونة Riscossa',q:'حبة',t:'p',pr:0},
-  {n:'زيت عافية دوار الشمس 1.5 لتر',q:'لتر',t:'p',pr:2.49},
-  {n:'زيت عافية دوار الشمس 2.9 لتر',q:'لتر',t:'p',pr:4.83},
-  {n:'زيت عافية دوار الشمس 9 لتر',q:'لتر',t:'p',pr:14.90},
-  {n:'زيت عافية زرة 1.5 لتر',q:'لتر',t:'p',pr:3.60},
-  {n:'زيت عافية ذرة 2.9 لتر',q:'لتر',t:'p',pr:6.98},
-  {n:'زيت عافية ذرة 5 لتر',q:'لتر',t:'p',pr:11.85},
-  {n:'زيت عافية ذرة 9 لتر',q:'لتر',t:'p',pr:21.23},
-  {n:'زيت زيتون المجد 4kg 5 لتر',q:'لتر',t:'p',pr:21.00},
-  {n:'سمنة الغزالين 1 لتر',q:'لتر',t:'p',pr:2.29},
-  {n:'سمنة الغزالين 350 غرام',q:'لتر',t:'s',pr:0.99},
-  {n:'ذرة معلبات ماكسي 340 غرام الوسط',q:'علبة',t:'s',pr:1.05},
-  {n:'ذرة البيروتي 800 جرام',q:'حبة',t:'s',pr:1.05},
-  {n:'علبة فول امريكانا',q:'حبة',t:'s',pr:0.39},
-  {n:'كريمة طبيخ ماستر شيف 200 مل',q:'مل',t:'s',pr:0.65},
-  {n:'كريمة طبيخ ماستر شيف 500 مل',q:'مل',t:'s',pr:1.55},
-  {n:'كريمة طبيخ ماستر شيف لتر',q:'مل',t:'s',pr:2.69},
-  {n:'كاسات مي كرتون',q:'حبة',t:'p',pr:0.99},
-  {n:'مشمعات اكل كل اثنين',q:'حبة',t:'p',pr:1.50}
- ]},
- {id:'clean',ic:'🧹',tt:'نظافة ومستلزمات المنزل',bg:'#EDE7F6',items:[
-  {n:'سائل جلي (صحون)',q:'حبة',t:'p',pr:2.00},{n:'كلور',q:'حبة',t:'p',pr:0.41},
-  {n:'اكياس زبالة',q:'2 رول',t:'p',pr:0.99},{n:'بونو للغسالة',q:'3 كغ',t:'p',pr:4.99},
-  {n:'العملاق بودرة غسيل من العقبة 10 كيلو',q:'كيلو',t:'p',pr:11.00},
-  {n:'العملاق 3 كيلو',q:'حبة',t:'p',pr:3.99},{n:'العملاق 7 كيلو',q:'حبة',t:'p',pr:9.25},
-  {n:'فاين (مناديل ورقية) 10 عبوات ثلاث طبقات',q:'بكيت',t:'p',pr:5.49},
-  {n:'معطر غسيل كومفورت 5 لتر',q:'لتر',t:'p',pr:4.99},
-  {n:'معطر كومفورت 2 لتر',q:'لتر',t:'p',pr:3.69},
-  {n:'فاين معطر افوكادو',q:'كل حبتين',t:'s',pr:1.50},
-  {n:'فلاش الاصلي',q:'علبة',t:'s',pr:1.12},{n:'هايجين',q:'حبة',t:'s',pr:0},
-  {n:'صابون كبوبو كبير',q:'1',t:'s',pr:4.69},{n:'فاين سوفت حمام عدد 12',q:'حبة',t:'s',pr:2.99}
- ]},
- {id:'baby',ic:'👶',tt:'مستلزمات الطفلة',bg:'#FCE4EC',items:[
-  {n:'لبن طيبة صغير',q:'حبة',t:'p',pr:0.16},
-  {n:'حفاظات بيبي جوي شوال',q:'شوال',t:'p',pr:11.00},
-  {n:'مناديل مبللة للأطفال',q:'حبة',t:'p',pr:0.99},
-  {n:'عصير المراعي ست باكيتات',q:'حبة',t:'s',pr:1.50},
-  {n:'عصير صن توب 12 بكيت',q:'حبة',t:'s',pr:1.95}
- ]},
- {id:'personal',ic:'🧴',tt:'عناية شخصية',bg:'#FFF3E0',items:[
-  {n:'شامبو كبير',q:'1 حبة',t:'p',pr:5.35},{n:'سبيرتو',q:'حبة',t:'p',pr:1.00},
-  {n:'نكشات اسنان silver',q:'حبة',t:'p',pr:0.70},{n:'نكشات اذن silver',q:'1',t:'p',pr:0.69}
- ]},
- {id:'snacks',ic:'🍫',tt:'وجبات خفيفة',bg:'#F5F5F5',items:[
-  {n:'شوكولاتة',q:'حسب الرغبة',t:'s',pr:0},{n:'شيبس',q:'حسب الرغبة',t:'s',pr:0},
-  {n:'عصير (معبأ)',q:'6 علب',t:'s',pr:0},{n:'كيك نون',q:'بكيت',t:'s',pr:1.25},
-  {n:'كريم كراميل نون',q:'حبة',t:'s',pr:0.31},{n:'كستر نون بكيت 300 جرام',q:'بكيت',t:'s',pr:0.64},
-  {n:'جلي نون نباتي 4 باكيتات',q:'بكيت',t:'s',pr:0.99},{n:'جلي نون بالحبة',q:'حبة',t:'s',pr:0.27},
-  {n:'تايجر حلاوة 300 جرام',q:'حبة',t:'s',pr:0.95},
-  {n:'هلو تكساس الكبيرة 500 مل',q:'حبة',t:'s',pr:1.99},
-  {n:'هلو صلصة الفلفل الحلو 500 مل',q:'حبة',t:'s',pr:1.99}
- ]},
- {id:'custom',ic:'➕',tt:'إضافات مخصصة',bg:'#F3E5F5',items:[]}
-];
-SECS.forEach(function(s){s.items.forEach(function(it,i){it._id=it._id||(s.id+'_'+i);});});
+var SECS=[];
 
 /* ════ STATE ════ */
 var ST={prices:{},sel:{},pur:{},catOv:{},secOv:{},custom:[],deleted:{},names:{},qtys:{},qtyNum:{},secOrder:[]};
@@ -406,7 +325,7 @@ function buildItems(){
   ITEMS={};
   SECS.forEach(function(s){
     s.items.forEach(function(it){
-      ITEMS[it._id]={name:it.n,qty:it.q,defTag:it.t,secId:s.id,builtin:true};
+      ITEMS[it._id]={name:it.n,qty:it.q,defTag:it.t,secId:it.secId||s.id,builtin:true};
       if(it.pr&&it.pr>0&&!ST.prices[it._id])ST.prices[it._id]=it.pr;
     });
   });
@@ -415,7 +334,7 @@ function buildItems(){
     ITEMS[ci.id]={name:ci.name,qty:ci.qty||'—',defTag:ci.tag||'m',secId:ci.secId||'custom',builtin:false};
     var sec=SECS.find(function(s){return s.id===(ci.secId||'custom');});
     if(sec&&!sec.items.find(function(x){return x._id===ci.id;}))
-      sec.items.push({n:ci.name,q:ci.qty||'—',t:ci.tag||'m',_id:ci.id});
+      sec.items.push({n:ci.name,q:ci.qty||'—',t:ci.tag||'m',_id:ci.id,secId:ci.secId});
   });
 }
 
@@ -432,10 +351,36 @@ function getOrderedSecs(){
 var saveTimer=null,awOK=false;
 
 async function loadData(){
-  /* 1. try localStorage as fast baseline */
+  /* 1. Load sections and items from Appwrite first */
+  document.getElementById('loadMsg').textContent='جاري تحميل الأقسام والمواد...';
+  try{
+    var sections = await loadSectionsFromAppwrite();
+    var items = await loadItemsFromAppwrite();
+
+    if(sections.length > 0){
+      SECS = sections;
+      // Distribute items to their sections
+      items.forEach(function(item){
+        var sec = SECS.find(function(s){ return s.id === item.secId; });
+        if(sec){
+          sec.items.push(item);
+        }
+      });
+    } else {
+      // Fallback: Create a default custom section if no sections found
+      SECS = [{id:'custom',ic:'➕',tt:'إضافات مخصصة',bg:'#F3E5F5',order:999,items:[]}];
+    }
+  }catch(e){
+    console.error('Error loading sections/items:', e);
+    // Fallback: Create a default custom section
+    SECS = [{id:'custom',ic:'➕',tt:'إضافات مخصصة',bg:'#F3E5F5',order:999,items:[]}];
+    setStatus(false,'⚠️ تعذر تحميل المواد من Appwrite');
+  }
+
+  /* 2. try localStorage as fast baseline for user state */
   try{var loc=JSON.parse(localStorage.getItem('groc_v5')||'null');if(loc)mergeInto(loc);}catch(e){}
 
-  /* 2. Appwrite — authoritative source */
+  /* 3. Appwrite — authoritative source for user state */
   try{
     document.getElementById('loadMsg').textContent='جاري تحميل بياناتك...';
     var awData=await awGet();
@@ -722,6 +667,7 @@ document.getElementById('reorderSave').onclick=function(){ST.secOrder=tmpOrder.s
 var editId=null,editOv=document.getElementById('editOverlay');
 function openEdit(id){
   editId=id;
+  populateSectionDropdown('esec');
   document.getElementById('ename').value=getName(id);document.getElementById('etag').value=getTag(id);
   document.getElementById('esec').value=getSec(id);document.getElementById('eqty').value=getUnit(id);
   document.getElementById('eprice').value=getPrice(id)||'';
@@ -748,7 +694,11 @@ document.getElementById('edel').onclick=function(){if(!editId)return;var id=edit
 
 /* ════ ADD ════ */
 var addOv=document.getElementById('addOverlay');
-document.getElementById('addBtn').onclick=function(){addOv.classList.add('show');setTimeout(function(){document.getElementById('mname').focus();},100);};
+document.getElementById('addBtn').onclick=function(){
+  populateSectionDropdown('msec');
+  addOv.classList.add('show');
+  setTimeout(function(){document.getElementById('mname').focus();},100);
+};
 document.getElementById('addCls').onclick=function(){addOv.classList.remove('show');};
 addOv.onclick=function(e){if(e.target===addOv)addOv.classList.remove('show');};
 document.getElementById('msub').onclick=function(){
@@ -763,7 +713,7 @@ document.getElementById('msub').onclick=function(){
   ST.sel[id]=true;ST.qtyNum[id]=qtyNum;
   ITEMS[id]={name:name,qty:qty,defTag:tag,secId:secId,builtin:false};
   var sec=SECS.find(function(s){return s.id===secId;});
-  if(sec)sec.items.push({n:name,q:qty,t:tag,_id:id});
+  if(sec)sec.items.push({n:name,q:qty,t:tag,_id:id,secId:secId});
   save();addOv.classList.remove('show');
   ['mname','mqty','mprice'].forEach(function(f){document.getElementById(f).value='';});
   document.getElementById('mqtynum').value='1';fullRender();
@@ -787,10 +737,35 @@ document.getElementById('search').oninput=function(){srch=this.value.trim();appl
   window.visualViewport.addEventListener('scroll',onVP);
 })();
 
+/* ════ DYNAMIC SECTION FILTER ════ */
+function populateSectionFilter(){
+  var secFilter = document.getElementById('secFilter');
+  secFilter.innerHTML = '<option value="">القسم</option>';
+  SECS.forEach(function(sec){
+    var opt = document.createElement('option');
+    opt.value = sec.id;
+    opt.textContent = sec.ic + ' ' + sec.tt;
+    secFilter.appendChild(opt);
+  });
+}
+
+function populateSectionDropdown(selectId){
+  var select = document.getElementById(selectId);
+  select.innerHTML = '';
+  SECS.forEach(function(sec){
+    var opt = document.createElement('option');
+    opt.value = sec.id;
+    opt.textContent = sec.ic + ' ' + sec.tt;
+    select.appendChild(opt);
+  });
+}
+
 /* ════ BOOT ════ */
 (async function(){
+  await ensureSession();
   await loadData();
   buildItems();
+  populateSectionFilter();
   document.getElementById('loadScreen').style.display='none';
   fullRender();
 })();
