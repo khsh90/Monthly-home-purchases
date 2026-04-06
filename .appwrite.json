@@ -1,0 +1,11 @@
+{
+  "projectId": "69d0701b00051cd5cfa2",
+  "sites": {
+    "monthly-home-purchases-web": {
+      "name": "Monthly Home Purchases",
+      "rootDirectory": ".",
+      "outputDirectory": ".",
+      "commands": []
+    }
+  }
+}
