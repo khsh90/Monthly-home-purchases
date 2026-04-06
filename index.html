@@ -766,6 +766,37 @@ function populateSectionDropdown(selectId){
   });
 }
 
+/* ════ REALTIME SYNC ════ */
+function setupRealtime(){
+  // Subscribe to main_state document changes for real-time sync
+  client.subscribe('databases.'+DB_ID+'.collections.'+COL_ID+'.documents.'+DOC_ID, function(response){
+    // Ignore updates from this device (to avoid loops)
+    if(response.events.includes('databases.*.collections.*.documents.*.update')){
+      console.log('🔄 Real-time update received from another device');
+
+      // Get the updated data
+      if(response.payload && response.payload.data){
+        try{
+          var remoteData = JSON.parse(response.payload.data);
+
+          // Merge remote changes with local state
+          mergeInto(remoteData);
+
+          // Re-render the UI
+          fullRender();
+
+          // Show badge
+          showBadge('🔄 تم التحديث من جهاز آخر', 'ok');
+        }catch(e){
+          console.error('Error processing real-time update:', e);
+        }
+      }
+    }
+  });
+
+  console.log('✅ Real-time sync enabled');
+}
+
 /* ════ BOOT ════ */
 (async function(){
   await ensureSession();
@@ -774,6 +805,9 @@ function populateSectionDropdown(selectId){
   populateSectionFilter();
   document.getElementById('loadScreen').style.display='none';
   fullRender();
+
+  // Enable real-time sync after initial load
+  setupRealtime();
 })();
 
 })();
