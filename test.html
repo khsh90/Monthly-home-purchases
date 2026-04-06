@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Appwrite Connection Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@15.0.0/dist/iife/sdk.js"></script>
+</head>
+<body>
+    <h1>Testing Appwrite Connection</h1>
+    <div id="status">Testing...</div>
+    <div id="results"></div>
+
+    <script>
+        const client = new Appwrite.Client()
+            .setEndpoint('https://fra.cloud.appwrite.io/v1')
+            .setProject('69d0701b00051cd5cfa2');
+
+        const account = new Appwrite.Account(client);
+        const databases = new Appwrite.Databases(client);
+
+        const DB_ID = '69d071e20030f19397c9';
+
+        async function test() {
+            const status = document.getElementById('status');
+            const results = document.getElementById('results');
+
+            try {
+                // Test 1: Create anonymous session
+                status.textContent = 'Test 1: Creating anonymous session...';
+                try {
+                    await account.get();
+                    results.innerHTML += '<p>✅ Session exists</p>';
+                } catch(e) {
+                    await account.createAnonymousSession();
+                    results.innerHTML += '<p>✅ Anonymous session created</p>';
+                }
+
+                // Test 2: Load sections
+                status.textContent = 'Test 2: Loading sections...';
+                const sections = await databases.listDocuments(DB_ID, 'sections');
+                results.innerHTML += `<p>✅ Loaded ${sections.total} sections</p>`;
+
+                // Test 3: Load items
+                status.textContent = 'Test 3: Loading items...';
+                const items = await databases.listDocuments(DB_ID, 'shopping_items', [
+                    Appwrite.Query.limit(5)
+                ]);
+                results.innerHTML += `<p>✅ Loaded ${items.total} items (showing 5)</p>`;
+                items.documents.forEach(item => {
+                    results.innerHTML += `<p style="margin-left:20px;">• ${item.name}</p>`;
+                });
+
+                // Test 4: Read main_state document
+                status.textContent = 'Test 4: Reading main_state...';
+                try {
+                    const doc = await databases.getDocument(DB_ID, 'home_purchases_collection', 'main_state');
+                    results.innerHTML += `<p>✅ main_state document exists</p>`;
+                    results.innerHTML += `<p style="margin-left:20px;">Data: ${doc.data}</p>`;
+                } catch(e) {
+                    results.innerHTML += `<p>⚠️ main_state document not found (code: ${e.code})</p>`;
+                }
+
+                // Test 5: Update main_state
+                status.textContent = 'Test 5: Updating main_state...';
+                const testData = {
+                    data: JSON.stringify({
+                        test: true,
+                        timestamp: new Date().toISOString()
+                    })
+                };
+
+                try {
+                    await databases.updateDocument(DB_ID, 'home_purchases_collection', 'main_state', testData);
+                    results.innerHTML += '<p>✅ Updated main_state successfully</p>';
+                } catch(e) {
+                    results.innerHTML += `<p>❌ Update failed (${e.code}): ${e.message}</p>`;
+
+                    // Try creating it
+                    status.textContent = 'Test 5b: Creating main_state...';
+                    try {
+                        await databases.createDocument(
+                            DB_ID,
+                            'home_purchases_collection',
+                            'main_state',
+                            testData,
+                            [
+                                Appwrite.Permission.read(Appwrite.Role.any()),
+                                Appwrite.Permission.update(Appwrite.Role.any()),
+                                Appwrite.Permission.delete(Appwrite.Role.any())
+                            ]
+                        );
+                        results.innerHTML += '<p>✅ Created main_state successfully</p>';
+                    } catch(e2) {
+                        results.innerHTML += `<p>❌ Create failed (${e2.code}): ${e2.message}</p>`;
+                        console.error('Full error:', e2);
+                    }
+                }
+
+                status.textContent = '✅ All tests complete!';
+
+            } catch(error) {
+                status.textContent = '❌ Test failed';
+                results.innerHTML += `<p style="color:red;">❌ Error: ${error.message}</p>`;
+                console.error('Full error:', error);
+            }
+        }
+
+        test();
+    </script>
+</body>
+</html>
